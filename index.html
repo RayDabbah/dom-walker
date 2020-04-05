@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Document</title>
+    <style>
+      h1 {
+      }
+    </style>
+  </head>
+  <body>
+    <div class="root" x-data="{count: 0}">
+      <button @click="count++">+</button>
+      <div class="output" x-text="count"></div>
+      <button @click="count--">-</button>
+    </div>
+    <script>
+      const root = document.querySelector("[x-data]");
+      const data = observe(getRootData(root));
+      refreshDom(root, data);
+
+      function refreshDom(el, data) {
+        walkDom(el, (el) => {
+          Array.from(el.attributes).forEach((attribute) => {
+            if (attribute.name.includes("@")) {
+              const eventType = attribute.name.replace("@", "");
+              el.addEventListener(eventType, (e) => {
+                console.log("we are in an event listener", e);
+
+                eval(`with(data){(${attribute.value})}`);
+              });
+            }
+
+            // if (Object.keys(attribute)[0].includes("@")) {
+            //   console.log(attribute);
+            // }
+
+            if (el.hasAttribute("x-text")) {
+              el.innerText = eval(`(data.${el.getAttribute("x-text")})`);
+            }
+          });
+        });
+      }
+
+      function walkDom(el, cb) {
+        cb(el);
+        el = el.firstElementChild;
+
+        while (el) {
+          walkDom(el, cb);
+          el = el.nextElementSibling;
+        }
+      }
+
+      function observe(data) {
+        return new Proxy(data, {
+          get(obj, prop) {
+            refreshDom(root, data);
+            return obj[prop];
+          },
+          set(obj, prop, value) {
+            obj[prop] = value;
+            refreshDom(root, data);
+          },
+        });
+      }
+
+      function getRootData(el) {
+        return eval(`(${el.getAttribute("x-data")})`);
+      }
+    </script>
+  </body>
+</html>
